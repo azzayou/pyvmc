@@ -90,9 +90,9 @@ _Multiplicable_T = TypeVar("_Multiplicable_T", bound=_SupportsMul[Any, Any])
 _Comparable_T = TypeVar("_Comparable_T", bound=_SupportsComparison)
 
 ########################################
-Numbers_Tuple: Final[Tuple[Type[float], Type[int]]]
-AnyIndex_Tuple: Final[Tuple[Type[int], Type[slice]]]
-EulerAnglesOrders: Final[List[str]]
+Numbers_Tuple: Final = (float, int)
+AnyIndex_Tuple: Final = (int, slice)
+EulerAnglesOrders: Final = ["XYZ", "XZY", "YXZ", "YZX", "ZXY", "ZYX"]
 
 ## ``EM`` stand for ``Error Message``
 EM_UNSUPPORTED_ORDER_EULER: Final[str]
@@ -116,11 +116,21 @@ inf: Final[float]
 nan: Final[float]
 
 
-############################## Important Function ##############################
+############################ Backwork Compatibility ############################
 def isclose(a: _Numbers, b: _Numbers,
     rel_tol: _Numbers = 1e-09, abs_tol: _Numbers = 0.0) -> bool: ...
 
 
+def erf(x: _Numbers) -> _Numbers: ...
+
+
+def erfc(x: _Numbers) -> _Numbers: ...
+
+
+def gamma(x: _Numbers) -> _Numbers: ...
+
+
+############################## Important Function ##############################
 def xor(a: object, b: object) -> bool: ...
 
 

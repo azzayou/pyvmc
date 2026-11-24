@@ -1,6 +1,7 @@
 """
-this package have file for:
-| * Functions for the most operation and comparison and collision detection.
+this package contain:
+| * Functions for most operation and comparison and collision detection.
+| * Math functions.
 | * Classes of All Vectors, Matrix and Colors having all of those functions
 | as methods.
 """
@@ -90,7 +91,7 @@ class FixList(Sequence):
         """Create Instance of FixList."""
         self._data = list(iterable)
         self.__first_length = len(self._data)
-        """length of data in first initialization of class (__init__)"""
+        """length of data in first initialization of class/type ``__init__``"""
 
     def __str__(self):
         return str(self._data)
@@ -128,8 +129,8 @@ class FixList(Sequence):
     def strict_length(self, expect_length):
         """Raise ValueError if length of data don't match with expect length."""
         if len(self) != expect_length:
-            raise ValueError(EM_WRONG_LENGTH % (
-                    expect_length, len(self), str(self)))
+            message = EM_WRONG_LENGTH % (expect_length, len(self), str(self))
+            raise ValueError(message)
 
     def change_data(self, new_data, offset_index=0, strict=False):
         """change values of data from an iterable.
@@ -143,14 +144,15 @@ class FixList(Sequence):
         | * if it's True. if the length of ``new_data`` Must be Equal To length
         | of data. Or it will raise ValueError.
         """
-        new_data_length = 0
+        new_length = 0
         for index, new_value in enumerate(new_data):
-            new_data_length += 1
+            new_length += 1
             self._data[index + offset_index] = new_value
         ##### check
-        if strict and not new_data_length == self.__first_length:
-            raise ValueError(EM_WRONG_LENGTH % (
-                self.__first_length, new_data_length, str(new_data)))
+        if strict and new_length != self.__first_length:
+            message = EM_WRONG_LENGTH % (self.__first_length, new_length,
+                                         str(new_data))
+            raise ValueError(message)
         ##### end check
 
     def copy(self):
@@ -243,8 +245,9 @@ class Color(FixList):
             ##### check
             self.strict_length(specific_length)
             if any(map(lambda x: not (0 <= x <= 255), red_green_blue_alpha)):
-                raise ValueError(EM_NOT_EXPECTED % (
-                        "color value be in range [0, 255]", str(self)))
+                message = EM_NOT_EXPECTED % (
+                    "color value be integer between [0, 255]", str(self))
+                raise ValueError(message)
             ##### end check
         else:
             super(Color, self).__init__(vector_zero(specific_length))
@@ -256,8 +259,8 @@ class Color(FixList):
         return self.COLOR_SPECIAL_REPR % tuple(self)
 
     def __format__(self, format_spec):
-        return self.COLOR_SPECIAL_STR % tuple(map(
-            lambda c: format(c, format_spec), self))
+        return self.COLOR_SPECIAL_STR % tuple(
+            map(lambda c: format(c, format_spec), self))
 
     ########## Properties
     @property
@@ -427,8 +430,8 @@ class Color(FixList):
         is_str = isinstance(str_or_bytes, str)
         is_bytes = isinstance(str_or_bytes, bytes)
         valid_length = 8
-        is_valid = (len(str_or_bytes) == 4
-                    or (valid_length <= len(str_or_bytes) <= 10))
+        is_valid = (len(str_or_bytes) == 4 or (
+                valid_length <= len(str_or_bytes) <= 10))
         ##### check
         if is_str and not is_valid:
             message = (
@@ -448,7 +451,7 @@ class Color(FixList):
         if str_or_bytes.startswith(the_0x):
             str_or_bytes = str_or_bytes[2:]
         func_converter = lambda index: int_from_str_or_bytes(
-                str_or_bytes[index:index + 2], base=base)
+            str_or_bytes[index:index + 2], base=base)
         self.change_data(map(func_converter, range(0, valid_length, 2)))
 
     def from_tuple(self, t_4str_or_4bytes, base):
@@ -492,7 +495,7 @@ class Color(FixList):
             raise ValueError(message % str(t_4str_or_4bytes))
         ##### end check
         func_converter = lambda str_or_bytes: int_from_str_or_bytes(
-                str_or_bytes, base=base)
+            str_or_bytes, base=base)
         self.change_data(map(func_converter, t_4str_or_4bytes))
 
 
@@ -1067,6 +1070,7 @@ class Vector2(Vector):
     [18, 49.7] Vector
     """
     VECTOR2_SPECIAL_STR = "[x=%s, y=%s]"
+
     # VECTOR2_SPECIAL_REPR  # not used
 
     def __init__(self, any_vector2=None, *args, **kwargs):
@@ -1094,8 +1098,8 @@ class Vector2(Vector):
     __repr__ = __str__
 
     def __format__(self, format_spec):
-        return self.VECTOR2_SPECIAL_STR % tuple(map(
-            lambda value: format(value, format_spec), self))
+        return self.VECTOR2_SPECIAL_STR % tuple(
+            map(lambda value: format(value, format_spec), self))
 
     ########## Properties
     @property
@@ -1198,6 +1202,7 @@ class Vector3(Vector):
     [-22, -30.3, -59.8] Vector
     """
     VECTOR3_SPECIAL_STR = "[x=%s, y=%s, z=%s]"
+
     # VECTOR3_SPECIAL_REPR  # not used
 
     def __init__(self, any_vector3=None, *args, **kwargs):
@@ -1225,8 +1230,8 @@ class Vector3(Vector):
     __repr__ = __str__
 
     def __format__(self, format_spec):
-        return self.VECTOR3_SPECIAL_STR % tuple(map(
-            lambda value: format(value, format_spec), self))
+        return self.VECTOR3_SPECIAL_STR % tuple(
+            map(lambda value: format(value, format_spec), self))
 
     ########## Properties
     @property
@@ -1350,12 +1355,12 @@ class Euler(Vector):
         return self.EULER_SPECIAL_STR % tuple(self)
 
     def __repr__(self):
-        return self.EULER_SPECIAL_REPR % (
-            self.yaw, self.pitch, self.roll, self.order)
+        return self.EULER_SPECIAL_REPR % (self.yaw, self.pitch, self.roll,
+                                          self.order)
 
     def __format__(self, format_spec):
-        return self.EULER_SPECIAL_STR % tuple(map(
-            lambda value: format(value, format_spec), self))
+        return self.EULER_SPECIAL_STR % tuple(
+            map(lambda value: format(value, format_spec), self))
 
     ########## Properties
     @property
@@ -1414,8 +1419,10 @@ class Euler(Vector):
          or mixed (e.g. 'xyz', 'XYZ', 'XyZ', 'ZYX', 'zyx', 'Zyx', etc...).
          Or it will raise ValueError.
         """
-        self.yaw, self.pitch, self.roll = euler_from_euler(
-            self.yaw, self.pitch, self.roll, self.order, new_order)
+        self.yaw, self.pitch, self.roll = euler_from_euler(self.yaw, self.pitch,
+                                                           self.roll,
+                                                           self.order,
+                                                           new_order)
         self.__order = new_order.upper()
 
     def to_matrix_3x3(self):
@@ -1436,8 +1443,8 @@ class Euler(Vector):
 
         Warning: Be Careful about Gimbal Lock.
         """
-        v, angle = axis_angle_from_euler(
-            self.yaw, self.pitch, self.roll, self.order)
+        v, angle = axis_angle_from_euler(self.yaw, self.pitch, self.roll,
+                                         self.order)
         return Vector3(v), angle
 
     def from_matrix_3x3(self, matrix_3x3):
@@ -1448,8 +1455,8 @@ class Euler(Vector):
         Note: ``yaw`` and ``roll`` will be between [-pi, pi],
          and ``pitch`` will be between [-pi/2, pi/2].
         """
-        self.yaw, self.pitch, self.roll = euler_from_matrix_3x3(
-            matrix_3x3, self.order)
+        self.yaw, self.pitch, self.roll = euler_from_matrix_3x3(matrix_3x3,
+                                                                self.order)
 
     def from_quaternion(self, quaternion):
         """Convert Quaternion (a.k.a. Vector4 (x, y, z, w)) To Euler angles.
@@ -1461,8 +1468,8 @@ class Euler(Vector):
         Note: both of ``yaw`` and ``roll`` will be between [-pi, pi],
          and ``pitch`` will be between [-pi/2, pi/2].
         """
-        self.yaw, self.pitch, self.roll = euler_from_quaternion(
-            quaternion, self.order)
+        self.yaw, self.pitch, self.roll = euler_from_quaternion(quaternion,
+                                                                self.order)
 
     def from_axis_angle(self, axis, angle):
         """Convert Axis (x, y, z) and angle (in radians) To Euler angles.
@@ -1474,8 +1481,8 @@ class Euler(Vector):
         Note: both of ``yaw`` and ``roll`` will be between [-pi, pi],
          and ``pitch`` will be between [-pi/2, pi/2].
         """
-        self.yaw, self.pitch, self.roll = euler_from_axis_angle(
-            axis, angle, self.order)
+        self.yaw, self.pitch, self.roll = euler_from_axis_angle(axis, angle,
+                                                                self.order)
 
     def from_euler(self, yaw, pitch, roll, input_order):
         """Convert Euler Angles from Euler Angles with specific order.
@@ -1488,8 +1495,9 @@ class Euler(Vector):
          or mixed (e.g. 'xyz', 'XYZ', 'XyZ', 'ZYX','zyx', 'Zyx', etc...).
          Or it will raise ValueError.
         """
-        self.yaw, self.pitch, self.roll = euler_from_euler(
-            yaw, pitch, roll, input_order, self.order)
+        self.yaw, self.pitch, self.roll = euler_from_euler(yaw, pitch, roll,
+                                                           input_order,
+                                                           self.order)
 
 
 class Vector4(Vector):
@@ -1514,6 +1522,7 @@ class Vector4(Vector):
     [x=100, y=400, z=900, w=1600] Vector4
     """
     VECTOR4_SPECIAL_STR = "[x=%s, y=%s, z=%s, w=%s]"
+
     # VECTOR4_SPECIAL_REPR  # not used
 
     def __init__(self, any_vector4=None):
@@ -1541,8 +1550,8 @@ class Vector4(Vector):
     __repr__ = __str__
 
     def __format__(self, format_spec):
-        return self.VECTOR4_SPECIAL_STR % tuple(map(
-            lambda value: format(value, format_spec), self))
+        return self.VECTOR4_SPECIAL_STR % tuple(
+            map(lambda value: format(value, format_spec), self))
 
     ########## Main Info
     @property
@@ -1724,9 +1733,8 @@ class Matrix(FixList):
                 return Vector(item)
             else:
                 return Matrix(item)
-        else:
-            raise IndexError(EM_NOT_EXPECTED % (
-                "index (int or slice) or tuple of 2 index", index))
+        raise IndexError(EM_NOT_EXPECTED % (
+            "index (int or slice) or tuple of 2 index", index))
 
     def __setitem__(self, index, new_value):
         self.change_data(matrix_setitem(self._data, index, new_value))
@@ -1950,8 +1958,8 @@ class Matrix(FixList):
         if (self.num_rows != expect_num_row
                 or self.num_columns != expect_num_column):
             raise ValueError(EM_WRONG_MATRIX_SIZE % (
-                    expect_num_row, expect_num_column,
-                    self.num_rows, self.num_columns, self._data))
+                expect_num_row, expect_num_column, self.num_rows,
+                self.num_columns, self._data))
 
     def to_vector(self):
         """Return Vector after Convert Matrix to Vector."""
@@ -2047,13 +2055,14 @@ class Matrix_2x2(Matrix):
         | * if it's specified Create Matrix 2x2 from it.
         """
         specific_size = (2, 2)
-        ##### check
         if any_matrix_2x2:
             super(Matrix_2x2, self).__init__(any_matrix_2x2)
+            ##### check
             self.strict_size(specific_size)
+            ##### end check
         else:
-            super(Matrix_2x2, self).__init__(matrix_zero(specific_size))
-        ##### end check
+            super(Matrix_2x2, self).__init__(
+                matrix_zero(specific_size))
 
 
 class Matrix_3x3(Matrix):
@@ -2075,13 +2084,14 @@ class Matrix_3x3(Matrix):
         | * if it's specified Create Matrix 3x3 from it.
         """
         specific_size = (3, 3)
-        ##### check
         if any_matrix_3x3:
             super(Matrix_3x3, self).__init__(any_matrix_3x3)
+            ##### check
             self.strict_size(specific_size)
+            ##### end check
         else:
-            super(Matrix_3x3, self).__init__(matrix_zero(specific_size))
-        ##### end check
+            super(Matrix_3x3, self).__init__(
+                matrix_zero(specific_size))
 
     ########## Methods
     def from_x_rotation(self, angle, transpose=False):
@@ -2198,13 +2208,14 @@ class Matrix_4x4(Matrix):
         | * if it's specified Create Matrix 4x4 from it.
         """
         specific_size = (4, 4)
-        ##### check
         if any_matrix_4x4:
             super(Matrix_4x4, self).__init__(any_matrix_4x4)
+            ##### check
             self.strict_size(specific_size)
+            ##### end check
         else:
-            super(Matrix_4x4, self).__init__(matrix_zero(specific_size))
-        ##### end check
+            super(Matrix_4x4, self).__init__(
+                matrix_zero(specific_size))
 
     ########## Methods
     def create_look_at(self, eye, target, up, transpose=False):
@@ -2282,4 +2293,3 @@ class Matrix_4x4(Matrix):
         """
         self.change_data(
             matrix_4x4_from_translation(vector3, transpose=transpose))
-

@@ -1,11 +1,18 @@
 """
-Functions for the most Operation and Comparison between Vectors which is
-Sequence (or any subclasses (e.g. tuple, list, ...) exclude `str` and `bytes`
-and `bytearray`) of Numbers (float or int). Also for Matrix which is Sequence
-of Vectors. also have some function that doesn't exist in old python version.
+Function for most Operation and Comparison between Vectors.
+also for most Operation for Matrices and some collision detection.
+also there are other math function (including ``math`` module its self)
+for Backwork Compatibility.
+
+Note: Quaternion order is (x, y, z, w).
 
 Note: Euler angles Support Tait–Bryan Angles Only (no repeat axis)
 and it's follow this order ``yaw`` and ``pitch`` and ``roll``.
+
+Info: Vector is Sequence of Numbers (float or integer).
+
+Info: Matrix is Sequence of Sequences of Numbers (float or integer).
+Or in other Word Sequence of Vectors.
 
 Info: ``yaw`` and ``pitch`` and ``roll`` is equivalent
 to ``Heading`` and ``Attitude`` and ``Bank`` also equivalent
@@ -74,24 +81,115 @@ epsilon = 1e-15
 inf = float('inf')
 nan = float('nan')
 
-############################## Important Function ##############################
-if sys.version_info < (3, 5):  # ``math.isclose`` is added in Python 3.5
+
+############################ Backwork Compatibility ############################
+if sys.version_info < (3, 5):  # `math.isclose` is added in Python 3.5
     # Info: https://docs.python.org/3/library/math.html#math.isclose
     def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
-        """Return True if the value ``a`` close to value ``b``. otherwise False.
+        """Determine whether two floating-point numbers are close in value.
+        Return True if ``a`` is close in value to ``b``, and False otherwise.
 
-        Note: added for backwork compatibility and for PEP 485.
+        ``rel_tol`` : maximum difference for being considered "close",
+        relative to the magnitude of the input values.
+
+        ``abs_tol`` : maximum difference for being considered "close",
+        regardless of the magnitude of the input values.
+
+        For the values to be considered close, the difference between them
+        must be smaller than at least one of the tolerances.
+        -inf, inf and NaN behave similarly to the IEEE 754 Standard.
+        That is, NaN is not close to anything, even itself.
+        inf and -inf are only close to themselves.
+
+        Info: added for backwork compatibility and for PEP 485.
         """
-        if isnan(a) or isnan(b):
+        if math.isnan(a) or math.isnan(b):
             return False
-        if isinf(a) and isinf(b):
+        if math.isinf(a) and math.isinf(b):
             return a == b  # True only if both inf or -inf
         ##
         return abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
 else:
-    from math import isclose
+    isclose = math.isclose
 
 
+if sys.version_info < (3, 2):  # `erf`, `erfc`, `gamma` add in Python 3.2
+    # Info: https://docs.python.org/3/library/math.html#math.erf
+    def erf(x):
+        """Return the error function at x.
+
+        Info: added for backwork compatibility.
+
+        Info: https://www.johndcook.com/blog/python_erf
+
+        Info: https://en.wikipedia.org/wiki/Error_function
+        """
+        # A&S 7.1.26 constants
+        a1 = 0.254829592
+        a2 = -0.284496736
+        a3 = 1.421413741
+        a4 = -1.453152027
+        a5 = 1.061405429
+        p = 0.3275911
+
+        t = 1 / (1 + p * abs(x))
+        y = ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * pow(e, -(x**2))
+        if x >= 0:
+            return 1.0 - y
+        else:
+            return y - 1.0
+
+
+    # Info: https://docs.python.org/3/library/math.html#math.erfc
+    def erfc(x):
+        """Return Complementary error function at x.
+
+        Info: added for backwork compatibility.
+
+        Info: https://en.wikipedia.org/wiki/Error_function#Complementary_error_function
+        """
+        return 1 - erf(x)
+
+
+    __GAMMA = [1.00000000000000000000, 0.57721566490153286061,
+               -0.65587807152025388108, -0.04200263503409523553,
+               0.16653861138229148950, -0.04219773455554433675,
+               -0.00962197152787697356, 0.00721894324666309954,
+               -0.00116516759185906511, -0.00021524167411495097,
+               0.00012805028238811619, -0.00002013485478078824,
+               -0.00000125049348214267, 0.00000113302723198170,
+               -0.00000020563384169776, 0.00000000611609510448,
+               0.00000000500200764447, -0.00000000118127457049,
+               0.00000000010434267117, 0.00000000000778226344,
+               -0.00000000000369680562, 0.00000000000051003703,
+               -0.00000000000002058326, -0.00000000000000534812,
+               0.00000000000000122678, -0.00000000000000011813,
+               0.00000000000000000119, 0.00000000000000000141,
+               -0.00000000000000000023, 0.00000000000000000002]
+
+
+    # Info: https://docs.python.org/3/library/math.html#math.gamma
+    def gamma(x):
+        """Return Gamma function at x.
+
+        Info: added for backwork compatibility.
+
+        Info: https://rosettacode.org/wiki/Gamma_function#Python
+
+        Info: https://en.wikipedia.org/wiki/Gamma_function
+        """
+        y  = float(x) - 1.0
+        sm = __GAMMA[-1]
+        for an in __GAMMA[-2::-1]:
+          sm = (sm * y) + an
+        return 1.0 / sm
+else:
+    erf = math.erf
+    erfc = math.erfc
+    gamma = math.gamma
+
+
+############################## Important Function ##############################
 def xor(a, b):
     """``a`` XOR ``b`` is equivalent to: ((not a) and not b) or (a and b)."""
     return ((not a) and not b) or (a and b)
@@ -650,9 +748,8 @@ def vector_add_vectors(*any_vectors):
     ##### check
     for length, vector in map(lambda v: (len(v), v), any_vectors):
         if max_length != length:
-            message = EM_NOT_ALL_LENGTH_RIGHT % (max_length, length,
-                                                 str(vector))
-            raise IndexError(message)
+            raise IndexError(EM_NOT_ALL_LENGTH_RIGHT % (
+                max_length, length, str(vector)))
     ##### end check
     return map(lambda index: sum(map(lambda v: v[index], any_vectors)),
                range(max_length))
@@ -673,10 +770,8 @@ def vector_add_values(any_vector, values):
     [3, 12]
     """
     if isinstance(values, Iterable):
-        func_add = lambda x: x + sum(values)
-    else:
-        func_add = lambda x: x + values
-    return map(func_add, any_vector)
+        return map(lambda x: x + sum(values), any_vector)
+    return map(lambda x: x + values, any_vector)
 
 
 def vector_sub_vectors(*any_vectors):
@@ -741,15 +836,12 @@ def vector_sub_values(any_vector, values, reverse=False):
             func_sub = lambda index, x: -x if index != 0 else x
             value = sum(map(lambda index_x: func_sub(index_x[0], index_x[1]),
                             enumerate(values)))
-            func_sub = lambda x: value - x
-        else:
-            func_sub = lambda x: values - x
+            return map(lambda x: value - x, any_vector)
+        return map(lambda x: values - x, any_vector)
     else:
         if isinstance(values, Iterable):
-            func_sub = lambda x: x - sum(values)
-        else:
-            func_sub = lambda x: x - values
-    return map(func_sub, any_vector)
+            return map(lambda x: x - sum(values), any_vector)
+        return map(lambda x: x - values, any_vector)
 
 
 def vector_mul_vectors(*any_vectors):
@@ -777,9 +869,8 @@ def vector_mul_vectors(*any_vectors):
     ##### check
     for length, vector in map(lambda v: (len(v), v), any_vectors):
         if max_length != length:
-            message = EM_NOT_ALL_LENGTH_RIGHT % (max_length, length,
-                                                 str(vector))
-            raise IndexError(message)
+            raise IndexError(EM_NOT_ALL_LENGTH_RIGHT % (
+                max_length, length, str(vector)))
 
     ##### end check
     def multi_vs(index):
@@ -810,10 +901,9 @@ def vector_mul_values(any_vector, values):
         value = 1
         for n in values:
             value *= n
-        func_mul = lambda x: x * value
+        return map(lambda x: x * value, any_vector)
     else:
-        func_mul = lambda x: x * values
-    return map(func_mul, any_vector)
+        return map(lambda x: x * values, any_vector)
 
 
 def vector_truediv_vector(v1, v2):
@@ -874,14 +964,13 @@ def vector_truediv_value(any_vector, value, reverse=False):
         if any(map(lambda i: i == 0, any_vector)):
             raise ZeroDivisionError(EM_ZERO_DIVISION)
         ##### end check
-        func_truediv = lambda x: value / x
+        return map(lambda x: value / x, any_vector)
     else:
         ##### check
         if value == 0:
             raise ZeroDivisionError(EM_ZERO_DIVISION)
         ##### end check
-        func_truediv = lambda x: x / value
-    return map(func_truediv, any_vector)
+        return map(lambda x: x / value, any_vector)
 
 
 def vector_floordiv_vector(v1, v2):
@@ -942,14 +1031,13 @@ def vector_floordiv_value(any_vector, value, reverse=False):
         if any(map(lambda i: i == 0, any_vector)):
             raise ZeroDivisionError(EM_ZERO_DIVISION)
         ##### end check
-        func_floordiv = lambda x: value // x
+        return map(lambda x: value // x, any_vector)
     else:
         ##### check
         if value == 0:
             raise ZeroDivisionError(EM_ZERO_DIVISION)
         ##### end check
-        func_floordiv = lambda x: x // value
-    return map(func_floordiv, any_vector)
+        return map(lambda x: x // value, any_vector)
 
 
 def vector_mod_vector(v1, v2):
@@ -1008,14 +1096,13 @@ def vector_mod_value(any_vector, value, reverse=False):
         if any(map(lambda i: i == 0, any_vector)):
             raise ZeroDivisionError(EM_ZERO_MOD)
         ##### end check
-        func_mod = lambda x: value % x
+        return map(lambda x: value % x, any_vector)
     else:
         ##### check
         if value == 0:
             raise ZeroDivisionError(EM_ZERO_MOD)
         ##### end check
-        func_mod = lambda x: x % value
-    return map(func_mod, any_vector)
+        return map(lambda x: x % value, any_vector)
 
 
 def vector_pow_vector(v1, v2, mod=None):
@@ -1115,10 +1202,9 @@ def vector_divmod_value(any_vector, value, reverse=False):
     [(0, 5), (0, 5)]
     """
     if reverse:
-        func_divmod = lambda x: divmod(value, x)
+        return map(lambda x: divmod(value, x), any_vector)
     else:
-        func_divmod = lambda x: divmod(x, value)
-    return map(func_divmod, any_vector)
+        return map(lambda x: divmod(x, value), any_vector)
 
 
 ########################## Simple Comparison Functions #########################
@@ -1130,8 +1216,7 @@ def is_vector_lt_vector(v1, v2):
     if len(v1) != len(v2):
         raise IndexError(EM_WRONG_LENGTH % (len(v1), len(v2), str(v2)))
     ##### end check
-    func_lt = lambda x1, x2: x1 < x2
-    return all(map(func_lt, v1, v2))
+    return all(map(lambda x1, x2: x1 < x2, v1, v2))
 
 
 def is_vector_le_vector(v1, v2):
@@ -1144,8 +1229,7 @@ def is_vector_le_vector(v1, v2):
     if len(v1) != len(v2):
         raise IndexError(EM_WRONG_LENGTH % (len(v1), len(v2), str(v2)))
     ##### end check
-    func_le = lambda x1, x2: x1 <= x2
-    return all(map(func_le, v1, v2))
+    return all(map(lambda x1, x2: x1 <= x2, v1, v2))
 
 
 def is_vector_eq_vector(v1, v2):
@@ -1158,8 +1242,7 @@ def is_vector_eq_vector(v1, v2):
     if len(v1) != len(v2):
         raise IndexError(EM_WRONG_LENGTH % (len(v1), len(v2), str(v2)))
     ##### end check
-    func_eq = lambda x1, x2: x1 == x2
-    return all(map(func_eq, v1, v2))
+    return all(map(lambda x1, x2: x1 == x2, v1, v2))
 
 
 def is_vector_ne_vector(v1, v2):
@@ -1172,8 +1255,7 @@ def is_vector_ne_vector(v1, v2):
     if len(v1) != len(v2):
         raise IndexError(EM_WRONG_LENGTH % (len(v1), len(v2), str(v2)))
     ##### end check
-    func_ne = lambda x1, x2: x1 != x2
-    return all(map(func_ne, v1, v2))
+    return all(map(lambda x1, x2: x1 != x2, v1, v2))
 
 
 def is_vector_gt_vector(v1, v2):
@@ -1186,8 +1268,7 @@ def is_vector_gt_vector(v1, v2):
     if len(v1) != len(v2):
         raise IndexError(EM_WRONG_LENGTH % (len(v1), len(v2), str(v2)))
     ##### end check
-    func_gt = lambda x1, x2: x1 > x2
-    return all(map(func_gt, v1, v2))
+    return all(map(lambda x1, x2: x1 > x2, v1, v2))
 
 
 def is_vector_ge_vector(v1, v2):
@@ -1200,8 +1281,7 @@ def is_vector_ge_vector(v1, v2):
     if len(v1) != len(v2):
         raise IndexError(EM_WRONG_LENGTH % (len(v1), len(v2), str(v2)))
     ##### end check
-    func_ge = lambda x1, x2: x1 >= x2
-    return all(map(func_ge, v1, v2))
+    return all(map(lambda x1, x2: x1 >= x2, v1, v2))
 
 
 ############# Comparison With Value
@@ -1209,42 +1289,42 @@ def is_vector_lt_value(any_vector, value):
     """Return True if all value of vector are Less Than specific Number.
      Otherwise, Return False
     """
-    return all(map(lambda x: x.__lt__(value), any_vector))
+    return all(map(lambda x: x < value, any_vector))
 
 
 def is_vector_le_value(any_vector, value):
     """Return True if all value of vector are Less Than Or Equal To a Number.
      Otherwise, Return False.
     """
-    return all(map(lambda x: x.__le__(value), any_vector))
+    return all(map(lambda x: x <= value, any_vector))
 
 
 def is_vector_eq_value(any_vector, value):
     """Return True if all value of vector are Equal To specific Number.
      Otherwise, Return False.
     """
-    return all(map(lambda x: x.__eq__(value), any_vector))
+    return all(map(lambda x: x == value, any_vector))
 
 
 def is_vector_ne_value(any_vector, value):
     """Return True if all value of vector are Not Equal To specific Number.
      Otherwise, Return False.
     """
-    return all(map(lambda x: x.__ne__(value), any_vector))
+    return all(map(lambda x: x != value, any_vector))
 
 
 def is_vector_gt_value(any_vector, value):
     """Return True if all value of vector are Greater Than specific Number.
      Otherwise, Return False.
     """
-    return all(map(lambda x: x.__gt__(value), any_vector))
+    return all(map(lambda x: x > value, any_vector))
 
 
 def is_vector_ge_value(any_vector, value):
     """Return True if all value of vector are Greater Than Or Equal To a Number.
      Otherwise, Return False.
     """
-    return all(map(lambda x: x.__ge__(value), any_vector))
+    return all(map(lambda x: x >= value, any_vector))
 
 
 ############# Compare Vector with 0
@@ -1252,42 +1332,42 @@ def is_vector_negative_not_zero(any_vector):
     """Return True if all value of vector are Less Than 0.
      Otherwise, Return False
     """
-    return all(map(lambda x: x.__lt__(0), any_vector))
+    return all(map(lambda x: x < 0, any_vector))
 
 
 def is_vector_negative(any_vector):
     """Return True if all value of vector are Less Than Or Equal To 0.
      Otherwise, Return False
     """
-    return all(map(lambda x: x.__le__(0), any_vector))
+    return all(map(lambda x: x <= 0, any_vector))
 
 
 def is_vector_eq_zero(any_vector):
     """Return True if All value of vector are Equal To 0.
      Otherwise, Return False.
     """
-    return all(map(lambda x: x.__eq__(0), any_vector))
+    return all(map(lambda x: x == 0, any_vector))
 
 
 def is_vector_ne_zero(any_vector):
     """Return True if All value of vector are NOT Equal To 0.
      Otherwise, Return False.
     """
-    return all(map(lambda x: x.__ne__(0), any_vector))
+    return all(map(lambda x: x != 0, any_vector))
 
 
 def is_vector_positive_not_zero(any_vector):
     """Return True if All value of vector are Greater Than 0.
      Otherwise, Return False.
     """
-    return all(map(lambda x: x.__gt__(0), any_vector))
+    return all(map(lambda x: x > 0, any_vector))
 
 
 def is_vector_positive(any_vector):
     """Return True if All value of vector are Greater Than Or Equal To 0.
      Otherwise, Return False.
     """
-    return all(map(lambda x: x.__ge__(0), any_vector))
+    return all(map(lambda x: x >= 0, any_vector))
 
 
 ################## Vector isclose
@@ -1318,8 +1398,7 @@ def is_vector_close_zero(any_vector):
     """Return True if All value of vector are Close To 0.
      Otherwise, Return False.
     """
-    func_isclose = lambda x: isclose(x, 0, abs_tol=epsilon)
-    return all(map(func_isclose, any_vector))
+    return all(map(lambda x: isclose(x, 0, abs_tol=epsilon), any_vector))
 
 
 ################## Vector is NaN or Inf
@@ -1331,9 +1410,10 @@ def is_vector_nan_or_inf(any_vector, is_any=False):
     | * if it's True. function will check for ANY value of Vector.
     | * if it's False. function will check for ALL value of Vector.
     """
+    check = map(lambda x: math.isnan(x) or math.isinf(x), any_vector)
     if is_any:
-        return any(map(lambda x: math.isnan(x) or math.isinf(x), any_vector))
-    return all(map(lambda x: math.isnan(x) or math.isinf(x), any_vector))
+        return any(check)
+    return all(check)
 
 
 is_vector_inf_or_nan = is_vector_nan_or_inf  # :D
@@ -1347,9 +1427,10 @@ def is_vector_nan(any_vector, is_any=False):
     | * if it's True. function will check for ANY value of Vector.
     | * if it's False. function will check for ALL value of Vector.
     """
+    check = map(math.isnan, any_vector)
     if is_any:
-        return any(map(math.isnan, any_vector))
-    return all(map(math.isnan, any_vector))
+        return any(check)
+    return all(check)
 
 
 def is_vector_inf(any_vector, is_any=False):
@@ -1360,9 +1441,10 @@ def is_vector_inf(any_vector, is_any=False):
     | * if it's True. function will check for ANY value of Vector.
     | * if it's False. function will check for ALL value of Vector.
     """
+    check = map(math.isinf, any_vector)
     if is_any:
-        return any(map(math.isinf, any_vector))
-    return all(map(math.isinf, any_vector))
+        return any(check)
+    return all(check)
 
 
 ######################### Specific Operation Functions #########################
@@ -1517,8 +1599,8 @@ def vector_direction(from_v1, to_v2):
     """
     ##### check
     if len(from_v1) != len(to_v2):
-        raise IndexError(
-            EM_WRONG_LENGTH % (len(from_v1), len(to_v2), str(to_v2)))
+        raise IndexError(EM_WRONG_LENGTH % (
+            len(from_v1), len(to_v2), str(to_v2)))
     ##### end check
     func_sub = lambda x1, x2: x1 - x2
     return map(func_sub, from_v1, to_v2)
@@ -1552,8 +1634,7 @@ def vector_midpoint(v1, v2):
 
 def vector_round(any_vector, ndigits=None):
     """Return Vector after round all Numbers (float or integer)."""
-    func_round = lambda x: round(x, ndigits=ndigits)
-    return map(func_round, any_vector)
+    return map(lambda x: round(x, ndigits=ndigits), any_vector)
 
 
 def vector_ceil(any_vector):
@@ -1569,7 +1650,7 @@ def vector_floor(any_vector):
 def vector_negative(any_vector):
     """Return Vector after change the sign of all Numbers (float or integer).
     """
-    return map(lambda x: x.__neg__(), any_vector)
+    return map(lambda x: -x, any_vector)
 
 
 def vector_abs(any_vector):
@@ -1801,10 +1882,10 @@ def axis_angle_from_quaternion(quaternion):
     angle = 2 * math.acos(w)
     num = (1 - w ** 2) ** 0.5
     ##
-    if isclose(num, 0, abs_tol=epsilon):
-        return axis, angle
-    else:
+    if num:
         return tuple(map(lambda x: x / num, axis)), angle
+    else:
+        return axis, angle
 
 
 def axis_angle_from_matrix_3x3(any_matrix_3x3):
@@ -1817,30 +1898,30 @@ def axis_angle_from_matrix_3x3(any_matrix_3x3):
     a0_0, a0_1, a0_2 = any_matrix_3x3[0]
     a1_0, a1_1, a1_2 = any_matrix_3x3[1]
     a2_0, a2_1, a2_2 = any_matrix_3x3[2]
-    ##### Side Note: it's just doubles conversion:
-    ## Quaternion -> Axis angle -> Matrix 3x3.
+    ##### Doubles conversion: Quaternion -> Axis angle -> Matrix 3x3.
     trace = a0_0 + a1_1 + a2_2
     if trace > 0:
         s = 0.5 / (trace + 1.0) ** 0.5
         ##
         axis = ((a2_1 - a1_2) * s, (a0_2 - a2_0) * s, (a1_0 - a0_1) * s)
-        w = max(-1, min(0.25 / s, 1))
+        w = 0.25 / s
     elif (a0_0 > a1_1) and (a0_0 > a2_2):
         s = 2.0 * (1.0 + a0_0 - a1_1 - a2_2) ** 0.5
         ##
         axis = (0.25 * s, (a0_1 + a1_0) / s, (a0_2 + a2_0) / s)
-        w = max(-1, min((a2_1 - a1_2) / s, 1))
+        w = (a2_1 - a1_2) / s
     elif a1_1 > a2_2:
         s = 2.0 * (1.0 - a0_0 + a1_1 - a2_2) ** 0.5
         ##
         axis = ((a0_1 + a1_0) / s, 0.25 * s, (a1_2 + a2_1) / s)
-        w = max(-1, min((a0_2 - a2_0) / s, 1))
+        w = (a0_2 - a2_0) / s
     else:
         s = 2.0 * (1.0 - a0_0 - a1_1 + a2_2) ** 0.5
         ##
         axis = ((a0_2 + a2_0) / s, (a1_2 + a2_1) / s, 0.25 * s)
-        w = max(-1, min((a1_0 - a0_1) / s, 1))
+        w = (a1_0 - a0_1) / s
     ##
+    w = max(-1, max(w, 1))
     angle = 2 * math.acos(w)
     num = (1 - w ** 2) ** 0.5
     ##
@@ -2223,16 +2304,19 @@ def quaternion_opposite(quaternion):
 
 def quaternion_from_axis_angle(axis, angle):
     """Convert axis (x, y, z) and angle (in radians) To Quaternion.
-     Return Quaternion (x, y, z, w) as a tuple.
+     Return Quaternion (x, y, z, w) as a Tuple.
 
     Note: ``axis`` is normalized in function.
     """
-    angle = ((angle % tau) / 2)
+    angle = (angle % tau) / 2
     sin_angle = math.sin(angle)
-    w = math.cos(angle)
+    magnitude_sq = sum(map(lambda x: x ** 2, axis))
+    if magnitude_sq:
+        x, y, z = [(v / (magnitude_sq ** 0.5)) * sin_angle for v in axis]
+    else:
+        x, y, z = [v * sin_angle for v in axis]
     ##
-    x, y, z = tuple(vector_normalize(axis))
-    return (x * sin_angle), (y * sin_angle), (z * sin_angle), w
+    return x, y, z, math.cos(angle)
 
 
 def quaternion_from_euler(yaw, pitch, roll, order):
@@ -2352,10 +2436,11 @@ def matrix_getitem(any_matrix, index):
             if isinstance(index2, int):
                 return any_matrix[index1][index2]
             else:  # second index are slice
-                if isinstance(any_matrix[index1][index2], Iterable):
-                    return iter(any_matrix[index1][index2])
-                else:  # get one item
-                    return any_matrix[index1][index2]
+                item = any_matrix[index1][index2]
+                if isinstance(item, Iterable):
+                    return iter(item)
+                else:  # got one item
+                    return item
         else:  # first index are slice
             return map(lambda v: v[index2], any_matrix[index1])
     elif isinstance(index, int):
@@ -2426,9 +2511,8 @@ def _matrix_setitem_from_index(any_matrix, index, new_value):
             if is_contain_only(new_value, Numbers_Tuple):  # Vector
                 ##### check
                 if num_columns != length_value:
-                    raise ValueError(
-                        EM_WRONG_VECTOR_LENGTH % (num_columns, length_value,
-                                                  str(new_value)))
+                    raise ValueError(EM_WRONG_VECTOR_LENGTH % (
+                        num_columns, length_value, str(new_value)))
                 ##### end check
                 return return_matrix(is_in_case,
                                      lambda _, column: new_value[column])
@@ -2439,10 +2523,10 @@ def _matrix_setitem_from_index(any_matrix, index, new_value):
                         length_value == num_columns and columns_value == 1)
                 ##### check
                 if xor(is_1_row, is_1_column):
-                    message = ("size of new value be either "
-                               "(1x%i) or (%ix1)," % (num_columns, num_columns))
-                    got = "(%ix%i) `%s`" % (length_value, columns_value,
-                                            str(new_value))
+                    message = ("size of new value be either (1x%i) or (%ix1),"
+                               % (num_columns, num_columns))
+                    got = "(%ix%i) `%s`" % (
+                        length_value, columns_value, str(new_value))
                     raise ValueError(EM_NOT_EXPECTED % (message, got))
                 ##### end check
                 if is_1_row:
@@ -2452,9 +2536,8 @@ def _matrix_setitem_from_index(any_matrix, index, new_value):
                     return return_matrix(is_in_case,
                                          lambda _, column: new_value[column][0])
         else:
-            raise TypeError(
-                EM_WRONG_TYPE_FOR_INDEX % (type(new_value), str(new_value),
-                                           index))
+            raise TypeError(EM_WRONG_TYPE_FOR_INDEX % (
+                type(new_value), str(new_value), index))
     else:  # index is slice
         range_items = range(num_rows)[index]
         is_in_case = lambda row: row in range_items
@@ -2465,9 +2548,8 @@ def _matrix_setitem_from_index(any_matrix, index, new_value):
             if is_contain_only(new_value, Numbers_Tuple):  # Vector
                 ##### check
                 if num_columns != length_value:
-                    raise ValueError(
-                        EM_WRONG_VECTOR_LENGTH % (num_columns, length_value,
-                                                  str(new_value)))
+                    raise ValueError(EM_WRONG_VECTOR_LENGTH % (
+                        num_columns, length_value, str(new_value)))
                 ##### end check
                 return return_matrix(is_in_case,
                                      lambda _, column: new_value[column])
@@ -2476,17 +2558,15 @@ def _matrix_setitem_from_index(any_matrix, index, new_value):
                 num_items = len(range_items)
                 ##### check
                 if num_items != length_value or num_columns != columns_value:
-                    raise ValueError(
-                        EM_WRONG_MATRIX_SIZE % (num_items, num_columns,
-                                                length_value, columns_value,
-                                                str(new_value)))
+                    raise ValueError(EM_WRONG_MATRIX_SIZE % (
+                        num_items, num_columns, length_value, columns_value,
+                        str(new_value)))
                 ##### end check
                 return return_matrix(is_in_case,
                                      lambda row, column: new_value[row][column])
         else:
-            raise TypeError(
-                EM_WRONG_TYPE_FOR_INDEX % (type(new_value), str(new_value),
-                                           index))
+            raise TypeError(EM_WRONG_TYPE_FOR_INDEX % (
+                type(new_value), str(new_value), index))
 
 
 def _matrix_setitem_from_tuple(any_matrix, tuple_index, new_value):
@@ -2565,9 +2645,8 @@ def _matrix_setitem_from_tuple(any_matrix, tuple_index, new_value):
             if isinstance(new_value, Numbers_Tuple):
                 return make_matrix(is_in_case, lambda *args: new_value)
             else:
-                raise TypeError(
-                    EM_WRONG_TYPE_FOR_INDEX % (type(new_value), str(new_value),
-                                               str(tuple_index)))
+                raise TypeError(EM_WRONG_TYPE_FOR_INDEX % (
+                    type(new_value), str(new_value), str(tuple_index)))
         else:  # second index are slice
             item_range = range(num_columns)[index2]
             length_lst_items = len(item_range)
@@ -2580,36 +2659,32 @@ def _matrix_setitem_from_tuple(any_matrix, tuple_index, new_value):
                 if is_contain_only(new_value, Numbers_Tuple):  # Vector
                     ##### check
                     if length_lst_items != length_value:
-                        raise ValueError(
-                            EM_WRONG_VECTOR_LENGTH % (length_lst_items,
-                                                      length_value,
-                                                      str(new_value)))
+                        raise ValueError(EM_WRONG_VECTOR_LENGTH % (
+                            length_lst_items, length_value, str(new_value)))
                     ##### end check
                     return make_matrix(is_in_case, lambda _, column: new_value[
                         item_range.index(column)])
                 else:  # Matrix
                     columns_value = len(new_value[0])
                     ##### end check
-                    if (
-                            length_lst_items != 1 or columns_value != length_lst_items):
-                        raise ValueError(
-                            EM_WRONG_MATRIX_SIZE % (1, length_lst_items,
-                                                    length_value, columns_value,
-                                                    str(new_value)))
+                    if (length_lst_items != 1
+                            or columns_value != length_lst_items):
+                        raise ValueError(EM_WRONG_MATRIX_SIZE % (
+                            1, length_lst_items, length_value, columns_value,
+                            str(new_value)))
                     ##### end check
                     return make_matrix(is_in_case,
                                        lambda _, column: new_value[0][
                                            item_range.index(column)])
             else:
-                raise TypeError(
-                    EM_WRONG_TYPE_FOR_INDEX % (type(new_value), str(new_value),
-                                               str(tuple_index)))
+                raise TypeError(EM_WRONG_TYPE_FOR_INDEX % (
+                    type(new_value), str(new_value), str(tuple_index)))
     else:  # first index are slice
         lst_items_range = range(num_rows)[index1]
         length_lst_items = len(lst_items_range)
         if isinstance(index2, int):
-            is_in_case = lambda row, column: (
-                    (row in lst_items_range) and (column == index2))
+            is_in_case = lambda row, column: ((row in lst_items_range)
+                                              and (column == index2))
             if isinstance(new_value, Numbers_Tuple):
                 return make_matrix(is_in_case, lambda *args: new_value)
             elif isinstance(new_value, Sequence):
@@ -2617,9 +2692,8 @@ def _matrix_setitem_from_tuple(any_matrix, tuple_index, new_value):
                 if is_contain_only(new_value, Numbers_Tuple):  # Vector
                     ##### check
                     if length_lst_items != length_value:
-                        raise ValueError(EM_WRONG_VECTOR_LENGTH % (length_value,
-                                                                   length_lst_items,
-                                                                   str(new_value)))
+                        raise ValueError(EM_WRONG_VECTOR_LENGTH % (
+                            length_value, length_lst_items, str(new_value)))
                     ##### end check
                     return make_matrix(is_in_case, lambda row, _: new_value[
                         lst_items_range.index(row)])
@@ -2627,22 +2701,20 @@ def _matrix_setitem_from_tuple(any_matrix, tuple_index, new_value):
                     columns_value = len(new_value[0])
                     ##### check
                     if length_lst_items != length_value or columns_value != 1:
-                        raise ValueError(
-                            EM_WRONG_MATRIX_SIZE % (length_lst_items, 1,
-                                                    length_value, columns_value,
-                                                    str(new_value)))
+                        raise ValueError(EM_WRONG_MATRIX_SIZE % (
+                            length_lst_items, 1, length_value, columns_value,
+                            str(new_value)))
                     ##### end check
                     return make_matrix(is_in_case, lambda row, _:
                     new_value[lst_items_range.index(row)][0])
             else:
-                raise TypeError(
-                    EM_WRONG_TYPE_FOR_INDEX % (type(new_value), str(new_value),
-                                               str(tuple_index)))
+                raise TypeError(EM_WRONG_TYPE_FOR_INDEX % (
+                    type(new_value), str(new_value), str(tuple_index)))
         else:  # second index are slice
             item_range = range(num_columns)[index2]
             length_items = len(item_range)
-            is_in_case = lambda row, column: (
-                    (row in lst_items_range) and (column in item_range))
+            is_in_case = lambda row, column: ((row in lst_items_range)
+                                              and (column in item_range))
             if isinstance(new_value, Numbers_Tuple):
                 return make_matrix(is_in_case, lambda *args: new_value)
             elif isinstance(new_value, Sequence):
@@ -2650,30 +2722,26 @@ def _matrix_setitem_from_tuple(any_matrix, tuple_index, new_value):
                 if is_contain_only(new_value, Numbers_Tuple):  # Vector
                     ##### check
                     if length_items != length_value:
-                        raise ValueError(EM_WRONG_VECTOR_LENGTH % (length_value,
-                                                                   length_items,
-                                                                   str(new_value)))
+                        raise ValueError(EM_WRONG_VECTOR_LENGTH % (
+                            length_value, length_items, str(new_value)))
                     ##### end check
                     return make_matrix(is_in_case, lambda _, column: new_value[
                         item_range.index(column)])
                 else:  # Matrix
                     columns_value = len(new_value[0])
                     ##### check
-                    if (
-                            length_lst_items != length_value or length_items != columns_value):
-                        raise ValueError(
-                            EM_WRONG_MATRIX_SIZE % (length_lst_items,
-                                                    length_items, length_value,
-                                                    columns_value,
-                                                    str(new_value)))
+                    if (length_lst_items != length_value
+                            or length_items != columns_value):
+                        raise ValueError(EM_WRONG_MATRIX_SIZE % (
+                            length_lst_items, length_items, length_value,
+                            columns_value, str(new_value)))
                     ##### end check
                     return make_matrix(is_in_case, lambda row, column:
                     new_value[lst_items_range.index(row)][
                         item_range.index(column)])
             else:
-                raise TypeError(
-                    EM_WRONG_TYPE_FOR_INDEX % (type(new_value), str(new_value),
-                                               str(tuple_index)))
+                raise TypeError(EM_WRONG_TYPE_FOR_INDEX % (
+                    type(new_value), str(new_value), str(tuple_index)))
 
 
 def matrix_setitem(any_matrix, index, new_value):
@@ -2818,8 +2886,8 @@ def determinant_matrix(any_matrix):
     if num_rows == 1:
         return any_matrix[0][0]
     elif num_rows == 2:
-        return any_matrix[0][0] * any_matrix[1][1] - (
-                any_matrix[0][1] * any_matrix[1][0])
+        return ((any_matrix[0][0] * any_matrix[1][1])
+                - (any_matrix[0][1] * any_matrix[1][0]))
     else:
         c_func = lambda j: pow(-1, j) * determinant_matrix(
             [merge_iterables(v[:j], v[j + 1:]) for v in any_matrix[1:]])
@@ -2853,12 +2921,13 @@ def matrix_from_vector(vector, size):
     """
     num_rows, num_columns = size
     ##### check
-    l = num_rows * num_columns
-    if len(vector) != l:
-        raise IndexError(EM_WRONG_VECTOR_LENGTH % (l, len(vector), str(vector)))
+    expect_length = num_rows * num_columns
+    if len(vector) != expect_length:
+        raise IndexError(EM_WRONG_VECTOR_LENGTH % (
+            expect_length, len(vector), str(vector)))
     ##### end check
-    func_vector_slice = lambda i: vector[i:i + num_columns]
-    return map(func_vector_slice, range(0, num_rows * num_columns, num_columns))
+    return map(lambda i: vector[i:i + num_columns],
+               range(0, num_rows * num_columns, num_columns))
 
 
 def matrix_identity(n):
@@ -2950,8 +3019,8 @@ def matrix_inv(any_matrix):
                           " of `%s`") % str(any_matrix))
     ##### end check
     matrix_adj = list(matrix_adjugate(any_matrix))
-    func_inv = lambda r: [matrix_adj[r][c] / det for c in range(num_columns)]
-    return map(func_inv, range(num_rows))
+    return map(lambda row: [matrix_adj[row][column] / det
+                            for column in range(num_columns)], range(num_rows))
 
 
 def matrix_round(any_matrix, ndigits=None):
@@ -2985,9 +3054,8 @@ def matrix_negative(any_matrix):
     """
     num_rows = len(any_matrix)
     num_columns = len(any_matrix[0])
-    return map(
-        lambda row: [-any_matrix[row][column] for column in range(num_columns)],
-        range(num_rows))
+    return map(lambda row: [-any_matrix[row][column]
+                            for column in range(num_columns)], range(num_rows))
 
 
 def matrix_abs(any_matrix):
@@ -3002,7 +3070,7 @@ def matrix_abs(any_matrix):
     >>> print(list(matrix_abs(m2)))  #Note: -0 is same as 0
     [[2, 1, 4], [0, 13, 1]]
     """
-    return map(lambda row: [abs(c) for c in row], any_matrix)
+    return map(lambda row: [abs(column) for column in row], any_matrix)
 
 
 def matrix_zero(size):
@@ -3032,9 +3100,9 @@ def matrix_add_matrices(*any_matrices):
     """
     num_rows = len(any_matrices[0])
     num_columns = len(any_matrices[0][0])
-    return map(
-        lambda row: [sum(map(lambda matrix: matrix[row][column], any_matrices))
-                     for column in range(num_columns)], range(num_rows))
+    func_add = lambda r, c: sum(map(lambda matrix: matrix[r][c], any_matrices))
+    return map(lambda row: [func_add(row, column)
+                            for column in range(num_columns)], range(num_rows))
 
 
 def matrix_sub_matrices(*any_matrices):
@@ -3058,10 +3126,10 @@ def matrix_sub_matrices(*any_matrices):
     """
     num_rows = len(any_matrices[0])
     num_columns = len(any_matrices[0][0])
-    sum_m = lambda r, c: sum(map(lambda matrix: matrix[r][c], any_matrices[1:]))
-    return map(
-        lambda row: [any_matrices[0][row][column] - sum_m(row, column) for
-                     column in range(num_columns)], range(num_rows))
+    func_sub = lambda r, c: any_matrices[0][r][c] - sum(
+        map(lambda matrix: matrix[r][c], any_matrices[1:]))
+    return map(lambda row: [func_sub(row, column)
+                            for column in range(num_columns)], range(num_rows))
 
 
 def matrix_mul_matrix(matrix1, matrix2):
@@ -3085,13 +3153,11 @@ def matrix_mul_matrix(matrix1, matrix2):
     >>> print(list(matrix_mul_matrix(m3, m4)))
     [[4, 8, 12], [5, 10, 15], [6, 12, 18]]
     """
-    num_rows = len(matrix1)
-    num_columns = len(matrix2[0])
-    max_length = max(num_rows, num_columns)
-    get_column = lambda m, index: [row[index] for row in m]
-    return map(lambda row: [
-        dot_product_vectors(matrix1[row], get_column(matrix2, column)) for
-        column in range(max_length)], range(max_length))
+    max_length = max(len(matrix1), len(matrix2[0]))
+    get_column = lambda index: [row[index] for row in matrix2]
+    func_dot_product = lambda v1, v2: sum(map(lambda x1, x2: (x1 * x2), v1, v2))
+    return map(lambda row: [func_dot_product(matrix1[row], get_column(column))
+                            for column in range(max_length)], range(max_length))
 
 
 def matrix_mul_vector(any_vector, any_matrix):
@@ -3107,10 +3173,9 @@ def matrix_mul_vector(any_vector, any_matrix):
     [32]
     """
     num_columns = len(any_matrix[0])
-    matrix_get_column = lambda m, index: [row[index] for row in m]
-    return map(lambda column: dot_product_vectors(any_vector,
-                                                  matrix_get_column(any_matrix,
-                                                                    column)),
+    get_column = lambda index: [row[index] for row in any_matrix]
+    func_dot_product = lambda v1, v2: sum(map(lambda x1, x2: (x1 * x2), v1, v2))
+    return map(lambda column: func_dot_product(any_vector, get_column(column)),
                range(num_columns))
 
 
@@ -3126,7 +3191,7 @@ def matrix_mul_value(value, any_matrix):
     >>> print(list(matrix_mul_value(n1, m1)))
     [[10, 20, 30], [40, 50, 60]]
     """
-    return map(lambda row: [value * column for column in row], any_matrix)
+    return map(lambda row: [column * value for column in row], any_matrix)
 
 
 def matrix_truediv_matrix(any_matrix1, any_matrix2):
@@ -3179,10 +3244,12 @@ def matrix_3x3_from_x_rotation(angle, transpose=False):
     cos_angle = math.cos(angle)
     sin_angle = math.sin(angle)
     if transpose:
-        return [[1, 0, 0], [0, cos_angle, sin_angle],
+        return [[1, 0, 0],
+                [0, cos_angle, sin_angle],
                 [0, -sin_angle, cos_angle]]
     else:
-        return [[1, 0, 0], [0, cos_angle, -sin_angle],
+        return [[1, 0, 0],
+                [0, cos_angle, -sin_angle],
                 [0, sin_angle, cos_angle]]
 
 
@@ -3205,10 +3272,12 @@ def matrix_3x3_from_y_rotation(angle, transpose=False):
     cos_angle = math.cos(angle)
     sin_angle = math.sin(angle)
     if transpose:
-        return [[cos_angle, 0, -sin_angle], [0, 1, 0],
+        return [[cos_angle, 0, -sin_angle],
+                [0, 1, 0],
                 [sin_angle, 0, cos_angle]]
     else:
-        return [[cos_angle, 0, sin_angle], [0, 1, 0],
+        return [[cos_angle, 0, sin_angle],
+                [0, 1, 0],
                 [-sin_angle, 0, cos_angle]]
 
 
@@ -3231,10 +3300,12 @@ def matrix_3x3_from_z_rotation(angle, transpose=False):
     cos_angle = math.cos(angle)
     sin_angle = math.sin(angle)
     if transpose:
-        return [[cos_angle, sin_angle, 0], [-sin_angle, cos_angle, 0],
+        return [[cos_angle, sin_angle, 0],
+                [-sin_angle, cos_angle, 0],
                 [0, 0, 1]]
     else:
-        return [[cos_angle, -sin_angle, 0], [sin_angle, cos_angle, 0],
+        return [[cos_angle, -sin_angle, 0],
+                [sin_angle, cos_angle, 0],
                 [0, 0, 1]]
 
 
@@ -3261,9 +3332,9 @@ def matrix_3x3_from_euler(yaw, pitch, roll, order):
     c_r, s_r = math.cos(roll), math.sin(roll)
     ## Start X
     if order == "XYZ":
-        return [[c_p * c_r, -c_p * s_r, s_p], [(c_y * s_r) + (s_y * s_p * c_r),
-                                               (c_y * c_r) - (s_y * s_p * s_r),
-                                               -s_y * c_p],
+        return [[c_p * c_r, -c_p * s_r, s_p],
+                [(c_y * s_r) + (s_y * s_p * c_r),
+                 (c_y * c_r) - (s_y * s_p * s_r), -s_y * c_p],
                 [(s_y * s_r) - (c_y * s_p * c_r),
                  (s_y * c_r) + (c_y * s_p * s_r), c_y * c_p]]
     elif order == "XZY":
@@ -3274,27 +3345,31 @@ def matrix_3x3_from_euler(yaw, pitch, roll, order):
                  (s_y * s_p * s_r) + (c_y * c_r)]]
     ## Start Y
     elif order == "YXZ":
-        return [
-            [(s_y * s_p * s_r) + (c_y * c_r), (s_y * s_p * c_r) - (c_y * s_r),
-             s_y * c_p], [c_p * s_r, c_p * c_r, -s_p],
-            [(c_y * s_p * s_r) - (s_y * c_r), (c_y * s_p * c_r) + (s_y * s_r),
-             c_y * c_p]]
+        return [[(s_y * s_p * s_r) + (c_y * c_r),
+                 (s_y * s_p * c_r) - (c_y * s_r), s_y * c_p],
+                [c_p * s_r, c_p * c_r, -s_p],
+                [(c_y * s_p * s_r) - (s_y * c_r),
+                 (c_y * s_p * c_r) + (s_y * s_r), c_y * c_p]]
     elif order == "YZX":
         return [[c_y * c_p, (s_y * s_r) - (c_y * s_p * c_r),
-                 (s_y * c_r) + (c_y * s_p * s_r)], [s_p, c_p * c_r, -c_p * s_r],
-                [-s_y * c_p, (c_y * s_r) + (s_y * s_p * c_r),
+                 (s_y * c_r) + (c_y * s_p * s_r)],
+                [s_p, c_p * c_r, -c_p * s_r],
+                [-s_y * c_p,
+                 (c_y * s_r) + (s_y * s_p * c_r),
                  (c_y * c_r) - (s_y * s_p * s_r)]]
     ## Start Z
     elif order == "ZYX":
         return [[c_y * c_p, (c_y * s_p * s_r) - (s_y * c_r),
                  (c_y * s_p * c_r) + (s_y * s_r)],
                 [c_y * c_p, (s_y * s_p * s_r) + (c_y * c_r),
-                 (s_y * s_p * c_r) - (c_y * s_r)], [-s_p, c_p * s_r, c_p * c_r]]
+                 (s_y * s_p * c_r) - (c_y * s_r)],
+                [-s_p, c_p * s_r, c_p * c_r]]
     else:  # ZXY
         return [[(c_y * c_r) - (s_y * s_p * s_r), -s_y * c_p,
                  (c_y * s_r) + (s_y * s_p * c_r)],
                 [(s_y * c_r) + (c_y * s_p * s_r), c_y * c_p,
-                 (s_y * s_p) - (c_y * s_p * c_r)], [-s_y * c_p, s_p, c_p * c_r]]
+                 (s_y * s_p) - (c_y * s_p * c_r)],
+                [-s_y * c_p, s_p, c_p * c_r]]
 
 
 def matrix_3x3_from_axis_angle(axis, angle):
@@ -3342,7 +3417,9 @@ def matrix_3x3_from_scale(scale_v3):
     """Creates an identity Matrix with the scale (x, y, z) set.
      Return A Matrix (3x3) as List with the scale set to the specified vector3.
     """
-    return [[scale_v3[0], 0, 0], [0, scale_v3[1], 0], [0, 0, scale_v3[2]]]
+    return [[scale_v3[0], 0, 0],
+            [0, scale_v3[1], 0],
+            [0, 0, scale_v3[2]]]
 
 
 def matrix_3x3_from_direction_scale(direction_v3, scale):
@@ -3416,9 +3493,15 @@ def matrix_4x4_perspective_projection_bounds(left, right, bottom, top, near,
     e_ = -(far + near) / (far - near)  # adding `_` for `e` math variable
     f = -(2 * far * near) / (far - near)
     if transpose:
-        return [[a, 0, c, 0], [0, b, d, 0], [0, 0, e_, f], [0, 0, -1, 0]]
+        return [[a, 0, c, 0],
+                [0, b, d, 0],
+                [0, 0, e_, f],
+                [0, 0, -1, 0]]
     else:
-        return [[a, 0, 0, 0], [0, b, 0, 0], [c, d, e_, -1], [0, 0, f, 0]]
+        return [[a, 0, 0, 0],
+                [0, b, 0, 0],
+                [c, d, e_, -1],
+                [0, 0, f, 0]]
 
 
 def matrix_4x4_perspective_projection(angle, aspect, near, far,
@@ -3475,10 +3558,14 @@ def matrix_4x4_from_translation(translation, transpose=False):
     |  [0, 0, 0, 1]]
     """
     if transpose:
-        return [[1, 0, 0, translation[0]], [0, 1, 0, translation[1]],
-                [0, 0, 1, translation[2]], [0, 0, 0, 1]]
+        return [[1, 0, 0, translation[0]],
+                [0, 1, 0, translation[1]],
+                [0, 0, 1, translation[2]],
+                [0, 0, 0, 1]]
     else:
-        return [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0],
+        return [[1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
                 [translation[0], translation[1], translation[2], 1]]
 
 
@@ -3577,11 +3664,11 @@ def is_collision_line_rect_2d(start_line, end_line, rect_topleft, rect_width,
     left_side, right_side = rect_topleft[0], rect_topleft[0] + rect_width
     down_side, up_side = rect_topleft[1] + rect_height, rect_topleft[1]
     ## First check if any point of line in rectangle
-    if (left_side <= start_line[0] <= right_side and up_side <= start_line[
-        1] <= down_side):
+    if (left_side <= start_line[0] <= right_side
+            and up_side <= start_line[1] <= down_side):
         return True
-    if (left_side <= end_line[0] <= right_side and up_side <= end_line[
-        1] <= down_side):
+    if (left_side <= end_line[0] <= right_side
+            and up_side <= end_line[1] <= down_side):
         return True
     ## Now check if any lines collide
     rect_topright, rect_bottomleft, rect_bottomright = [
@@ -3634,8 +3721,8 @@ def is_collision_rect_rect_2d(rect_topleft1, rect_width1, rect_height1,
                              rect_topleft1[0] + rect_width1)
     down_side, up_side = (rect_topleft1[1] + rect_height1 - rect_height2,
                           rect_topleft1[1])
-    return (left_side <= rect_topleft2[0] <= right_side and down_side <=
-            rect_topleft2[1] <= up_side)
+    return (left_side <= rect_topleft2[0] <= right_side
+            and down_side <= rect_topleft2[1] <= up_side)
 
 
 def is_collision_point_triangle_2d(point, p1_triangle, p2_triangle,
